@@ -1,7 +1,127 @@
 import 'package:flutter/material.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'dart:io';
 
-class InfoScreen extends StatelessWidget {
+class InfoScreen extends StatefulWidget {
   const InfoScreen({super.key});
+
+  @override
+  State<InfoScreen> createState() => _InfoScreenState();
+}
+
+class _InfoScreenState extends State<InfoScreen> {
+  String _deviceInfoText = 'Cargando información del dispositivo...';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDeviceInfo();
+  }
+
+  Future<void> _loadDeviceInfo() async {
+    if (!Platform.isIOS) {
+      setState(() {
+        _deviceInfoText = 'Información no disponible (no es iOS)';
+      });
+      return;
+    }
+
+    try {
+      final deviceInfo = DeviceInfoPlugin();
+      final iosInfo = await deviceInfo.iosInfo;
+      
+      final machine = iosInfo.utsname.machine;
+      final systemVersion = iosInfo.systemVersion;
+      
+      // Mapeo básico para dispositivos comunes (ejemplo)
+      String modelo = machine;
+      String procesador = 'Desconocido';
+      String arquitectura = 'ARM64';
+      String config = 'Desconocido';
+      String cacheL1 = 'Desconocido';
+      String cacheL2 = 'Desconocido';
+      String lineSize = '128 bytes';
+      String ram = 'Desconocido';
+      
+      if (machine.startsWith('iPhone15,4') || machine.startsWith('iPhone15,5')) {
+        modelo = 'iPhone 15 ($machine)';
+        procesador = 'Apple A16 Bionic (6 núcleos)';
+        arquitectura = 'ARM64 (v8.6-A)';
+        config = '2P + 4E Cores';
+        cacheL1 = '128 KB';
+        cacheL2 = '16 MB';
+        ram = '6 GB LPDDR5';
+      } else if (machine.startsWith('iPhone16,1') || machine.startsWith('iPhone16,2')) {
+        modelo = 'iPhone 15 Pro ($machine)';
+        procesador = 'Apple A17 Pro (6 núcleos)';
+        arquitectura = 'ARM64 (v8.6-A)';
+        config = '2P + 4E Cores';
+        cacheL1 = '128 KB';
+        cacheL2 = '16 MB';
+        ram = '8 GB LPDDR5';
+      } else if (machine.startsWith('iPhone14,7') || machine.startsWith('iPhone14,8')) {
+        modelo = 'iPhone 14 ($machine)';
+        procesador = 'Apple A15 Bionic (6 núcleos)';
+        arquitectura = 'ARM64 (v8.5-A)';
+        config = '2P + 4E Cores';
+        cacheL1 = '128 KB';
+        cacheL2 = '12 MB';
+        ram = '6 GB LPDDR4X';
+      } else if (machine.startsWith('iPhone14,2') || machine.startsWith('iPhone14,3')) {
+        modelo = 'iPhone 13 Pro ($machine)';
+        procesador = 'Apple A15 Bionic (6 núcleos)';
+        arquitectura = 'ARM64 (v8.5-A)';
+        config = '2P + 4E Cores';
+        cacheL1 = '128 KB';
+        cacheL2 = '12 MB';
+        ram = '6 GB LPDDR4X';
+      } else if (machine.startsWith('iPhone13,2') || machine.startsWith('iPhone13,3') || machine.startsWith('iPhone13,4') || machine.startsWith('iPhone13,1')) {
+        modelo = 'iPhone 12 ($machine)';
+        procesador = 'Apple A14 Bionic (6 núcleos)';
+        arquitectura = 'ARM64 (v8.5-A)';
+        config = '2P + 4E Cores';
+        cacheL1 = '128 KB';
+        cacheL2 = '8 MB';
+        ram = '4/6 GB LPDDR4X';
+      } else if (machine == 'arm64' || machine == 'x86_64') {
+        modelo = 'Simulador iOS ($machine)';
+        procesador = 'Mac CPU';
+        config = 'Virtual';
+        cacheL1 = 'N/A';
+        cacheL2 = 'N/A';
+        ram = 'N/A';
+      } else {
+        modelo = 'Apple Device ($machine)';
+        procesador = 'Apple Silicon';
+      }
+
+      // Helper for padding
+      String pad(String text, int width) => text.padRight(width);
+
+      final table = 
+        '┌─────────────────────────────────────────────────────┐\n'
+        '│ 📱 DISPOSITIVO DETECTADO                            │\n'
+        '├─────────────────────────────────────────────────────┤\n'
+        '│ • Modelo:         ${pad(modelo, 34)}│\n'
+        '│ • Procesador:     ${pad(procesador, 34)}│\n'
+        '│ • Arquitectura:   ${pad(arquitectura, 34)}│\n'
+        '│ • Configuración:  ${pad(config, 34)}│\n'
+        '│ • Caché L1 Datos: ${pad(cacheL1, 34)}│\n'
+        '│ • Caché L2:       ${pad(cacheL2, 34)}│\n'
+        '│ • Tamaño Línea:   ${pad(lineSize, 34)}│\n'
+        '│ • Memoria RAM:    ${pad(ram, 34)}│\n'
+        '│ • Sistema:        ${pad('iOS $systemVersion', 34)}│\n'
+        '└─────────────────────────────────────────────────────';
+
+      setState(() {
+        _deviceInfoText = table;
+      });
+    } catch (e) {
+      setState(() {
+        _deviceInfoText = 'Error al cargar info: $e';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +165,6 @@ class InfoScreen extends StatelessWidget {
               
               const SizedBox(height: 48),
 
-              // Info dispositivo mockeada por ahora
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -53,27 +172,15 @@ class InfoScreen extends StatelessWidget {
                   color: isDark ? const Color(0xFF1E1E1E) : Colors.black,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Dispositivo',
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Iphone 15 - Apple A16 Bionic (6 núcleos)',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  _deviceInfoText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Courier',
+                    fontSize: 12,
+                    height: 1.5,
+                  ),
+                  overflow: TextOverflow.visible,
                 ),
               ),
             ],

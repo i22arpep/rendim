@@ -29,10 +29,9 @@ class HomeScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: Center(
-                    child: Icon(
-                      Icons.speed,
-                      size: 60,
-                      color: Theme.of(context).colorScheme.primary,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Image.asset('assets/logo.png', fit: BoxFit.contain),
                     ),
                   ),
                 ),
