@@ -7,8 +7,7 @@ typedef MatrixMultiplicationDart = void Function(Pointer<Float> a, Pointer<Float
 
 class EngineService {
   late DynamicLibrary _lib;
-  late MatrixMultiplicationDart _multIjk;
-  late MatrixMultiplicationDart _multIkj;
+  final Map<String, MatrixMultiplicationDart> _cache = {};
 
   EngineService() {
     if (Platform.isIOS || Platform.isMacOS) {
@@ -16,21 +15,27 @@ class EngineService {
     } else {
       throw UnsupportedError("Plataforma no soportada para FFI en este proyecto");
     }
-
-    _multIjk = _lib
-        .lookup<NativeFunction<MatrixMultiplicationC>>('matrix_multiplication_ijk')
-        .asFunction();
-        
-    _multIkj = _lib
-        .lookup<NativeFunction<MatrixMultiplicationC>>('matrix_multiplication_ikj')
-        .asFunction();
   }
 
-  void multiplyIjk(Pointer<Float> a, Pointer<Float> b, Pointer<Float> c, int n) {
-    _multIjk(a, b, c, n);
-  }
+  MatrixMultiplicationDart getFunction(String variant, String level) {
+    String suffix = "";
+    if (level == "none" || level == "OptimizationLevel.none") suffix = "_o0";
+    else if (level == "o1" || level == "OptimizationLevel.o1") suffix = "_o1";
+    else if (level == "o2" || level == "OptimizationLevel.o2") suffix = "_o2";
+    else if (level == "o3" || level == "OptimizationLevel.o3") suffix = "_o3";
+    
+    // variant normally comes as "IndexVariant.ijk", extract "ijk"
+    String cleanVariant = variant;
+    if (variant.contains(".")) {
+      cleanVariant = variant.split(".").last;
+    }
 
-  void multiplyIkj(Pointer<Float> a, Pointer<Float> b, Pointer<Float> c, int n) {
-    _multIkj(a, b, c, n);
+    final functionName = "matrix_multiplication_${cleanVariant}${suffix}";
+    
+    if (!_cache.containsKey(functionName)) {
+      _cache[functionName] = _lib.lookup<NativeFunction<MatrixMultiplicationC>>(functionName).asFunction<MatrixMultiplicationDart>();
+    }
+    
+    return _cache[functionName]!;
   }
 }

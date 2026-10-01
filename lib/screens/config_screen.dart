@@ -51,14 +51,11 @@ class ConfigScreen extends StatelessWidget {
               _buildSectionTitle('TÉCNICA DE OPTIMIZACIÓN', isDark),
               _buildDropdown<OptimizationTechnique>(
                 value: config.technique,
-                items: OptimizationTechnique.values,
+                items: const [OptimizationTechnique.localidadEspacial], // Solo permitir localidad espacial
                 labelBuilder: (val) {
                   switch(val) {
                     case OptimizationTechnique.localidadEspacial: return 'Localidad Espacial';
-                    case OptimizationTechnique.localidadTemporal: return 'Localidad Temporal';
-                    case OptimizationTechnique.permutacion: return 'Permutación Analítica';
-                    case OptimizationTechnique.padding: return 'Padding Intra-array';
-                    case OptimizationTechnique.tiling: return 'Tiling / Blocking';
+                    default: return 'Desconocido';
                   }
                 },
                 onChanged: (val) => appState.updateConfig(config.copyWith(technique: val!)),

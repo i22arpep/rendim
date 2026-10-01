@@ -1,7 +1,12 @@
+import 'dart:ffi';
+import 'package:ffi/ffi.dart';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
+import '../models/test_config.dart';
 import '../models/test_result.dart';
+import '../services/engine_service.dart';
 import 'results_screen.dart';
 
 class ExecutionScreen extends StatefulWidget {
@@ -15,38 +20,86 @@ class _ExecutionScreenState extends State<ExecutionScreen> {
   @override
   void initState() {
     super.initState();
-    // Iniciar la lógica real de ejecución en segundo plano aquí.
-    // Por ahora, simularemos la ejecución para probar la UI.
-    _simulateExecution();
+    _runExecution();
   }
 
-  Future<void> _simulateExecution() async {
+  Future<void> _runExecution() async {
     final appState = context.read<AppState>();
     final reps = appState.config.repetitions;
+    final n = appState.config.matrixSize;
+    final variant = appState.config.indexVariant;
     final times = <double>[];
+    
+    final engine = EngineService();
+
+    // Asignar memoria para las matrices
+    final totalElements = n * n;
+    final pointerA = calloc<Float>(totalElements);
+    final pointerB = calloc<Float>(totalElements);
+    final pointerC = calloc<Float>(totalElements);
+
+    // Inicializar matrices A y B
+    for (int i = 0; i < totalElements; i++) {
+      pointerA[i] = 1.0;
+      pointerB[i] = 2.0;
+      pointerC[i] = 0.0;
+    }
+
+    final stopwatch = Stopwatch();
 
     for (int i = 1; i <= reps; i++) {
       if (appState.cancelRequested) break;
       
-      // Simulamos tiempo de cómputo
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (!mounted) return;
+      // Permitir que la interfaz se actualice antes de bloquear el hilo
+      await Future.delayed(const Duration(milliseconds: 10));
+      if (!mounted) break;
 
-      final progress = i / reps;
-      times.add(12.0 + (i % 2) * 0.5); // Tiempo simulado en ms
+      stopwatch.reset();
+      stopwatch.start();
+
+      // Obtener la función correcta del motor y ejecutarla
+      final func = engine.getFunction(variant.toString(), appState.config.level.toString());
+      func(pointerA, pointerB, pointerC, n);
+
+      stopwatch.stop();
       
-      appState.updateProgress(progress, i, "00:00.${(i * 50).toString().padLeft(2, '0')}");
+      final elapsedMs = stopwatch.elapsedMicroseconds / 1000.0;
+      times.add(elapsedMs);
+      
+      final progress = i / reps;
+      
+      // Formatear tiempo
+      final totalSeconds = (elapsedMs / 1000.0).floor();
+      final ms = (elapsedMs % 1000.0).floor();
+      final timeStr = "00:${totalSeconds.toString().padLeft(2, '0')}.${ms.toString().padLeft(3, '0')}";
+      
+      appState.updateProgress(progress, i, timeStr);
     }
+    
+    // Liberar memoria (muy importante para evitar memory leaks)
+    calloc.free(pointerA);
+    calloc.free(pointerB);
+    calloc.free(pointerC);
 
     if (!appState.cancelRequested && mounted) {
       // Calcular métricas
+      final sortedTimes = List<double>.from(times)..sort();
       final media = times.reduce((a, b) => a + b) / times.length;
-      final timeTotal = times.reduce((a, b) => a + b); // simulado
+      final mediana = sortedTimes[sortedTimes.length ~/ 2];
+      
+      double sumSquares = 0.0;
+      for (final t in times) {
+        sumSquares += (t - media) * (t - media);
+      }
+      
+      final desviacion = times.length > 1 ? math.sqrt(sumSquares / (times.length - 1)) : 0.0;
+      
+      final timeTotal = times.reduce((a, b) => a + b);
       
       final result = TestResult(
         media: media,
-        mediana: 12.1, // simulado
-        desviacion: 0.23, // simulado
+        mediana: mediana,
+        desviacion: desviacion,
         tiempoTotal: timeTotal,
         repeticiones: times,
       );
